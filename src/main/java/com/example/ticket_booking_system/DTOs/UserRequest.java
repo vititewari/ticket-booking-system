@@ -19,6 +19,6 @@ public class UserRequest {
     @NotBlank(message = "Email cannot be blank")
     private String email;
 
-    //private String password;
+    private String password;
     private String role;
 }
