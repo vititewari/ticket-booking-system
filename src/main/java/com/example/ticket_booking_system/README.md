@@ -83,6 +83,9 @@ Two users booking the same seat simultaneously is handled via JPA optimistic loc
 ### Seat Hold Expiry
 When a booking is created, the seat moves to `HELD` status. A scheduled job runs every 60 seconds and releases any seats held for more than 10 minutes back to `AVAILABLE`.
 
+### Auto Seat Generation
+When an event is created with `totalSeats=100`, the system automatically generates 100 seat records with `AVAILABLE` status. This is handled atomically — if seat creation fails, the event creation rolls back (`@Transactional`).
+
 ### Audit Trail
 Every status transition (null→PENDING, PENDING→CONFIRMED etc.) is recorded in `BOOKING_AUDIT` with timestamp and actor.
 
