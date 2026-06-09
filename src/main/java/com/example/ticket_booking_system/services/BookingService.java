@@ -9,6 +9,8 @@ import com.example.ticket_booking_system.entities.Booking;
 import com.example.ticket_booking_system.entities.BookingAudit;
 import com.example.ticket_booking_system.entities.Seat;
 import com.example.ticket_booking_system.entities.User;
+import com.example.ticket_booking_system.events.BookingCancelledEvent;
+import com.example.ticket_booking_system.events.BookingConfirmedEvent;
 import com.example.ticket_booking_system.exceptions.*;
 import com.example.ticket_booking_system.repositories.AuditRepository;
 import com.example.ticket_booking_system.repositories.BookingRepository;
@@ -18,6 +20,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,6 +38,7 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final AuditRepository auditRepository;
     private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public BookingResponse getResponse(Booking booking){
         return new BookingResponse(booking.getId(), booking.getCreatedAt(),booking.getUser().getId(),
@@ -92,7 +96,6 @@ public class BookingService {
             throw(new BookingNotPendingException(id));
         }
         else{
-            notificationService.sendBookingConfirmation(booking.getId(), booking.getUser().getName());
             Seat seat = booking.getSeat();
             seat.setStatus(StatusSeat.BOOKED);
             seatRepository.save(seat);
@@ -105,6 +108,7 @@ public class BookingService {
             auditRepository.save(audit);
             booking.setStatus(StatusBooking.CONFIRMED);
             Booking saved = bookingRepository.save(booking);
+            eventPublisher.publishEvent(new BookingConfirmedEvent(saved.getId(), booking.getUser().getName()));
             return getResponse(saved);
         }
     }
@@ -124,9 +128,9 @@ public class BookingService {
         audit.setChangedAt(LocalDateTime.now());
         audit.setChangedBy(booking.getUser().getName());
         auditRepository.save(audit);
-        notificationService.sendBookingCancellation(booking.getId(), booking.getUser().getName());
         booking.setStatus(StatusBooking.EXPIRED);
         Booking saved = bookingRepository.save(booking);
+        eventPublisher.publishEvent(new BookingCancelledEvent(saved.getId(), booking.getUser().getName()));
         return getResponse(saved);
     }
 
