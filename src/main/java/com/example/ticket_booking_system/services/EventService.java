@@ -10,6 +10,7 @@ import com.example.ticket_booking_system.entities.Seat;
 import com.example.ticket_booking_system.exceptions.EventNotFoundException;
 import com.example.ticket_booking_system.repositories.EventRepository;
 import com.example.ticket_booking_system.repositories.SeatRepository;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class EventService {
         return new EventResponse(event.getId(), event.getName(), event.getDate(), event.getVenue(), event.getTotalSeats());
     }
 
+    @Transactional
     public EventResponse addEvent(@NonNull EventRequest request){
         Event event = new Event();
         event.setDate(request.getDate());
@@ -39,6 +41,16 @@ public class EventService {
         event.setDurationInMinutes(request.getDurationInMinutes());
         event.setVenue(request.getVenue());
         Event saved = eventRepository.save(event);
+
+        // Auto-create seats
+        for (int i = 1; i <= request.getTotalSeats(); i++) {
+            Seat seat = new Seat();
+            seat.setSeatNumber(i);
+            seat.setStatus(StatusSeat.AVAILABLE);
+            seat.setEvent(saved);
+            seatRepository.save(seat);
+        }
+
         return getResponse(saved);
     }
     public  EventResponse getEventById(Long id){
